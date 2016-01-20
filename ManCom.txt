@@ -1,0 +1,89 @@
+
+ManCom = "Manged Communication"
+
+
+Callback API and Blocking API.  So far, I think if you want multiplexing functionality, you should use the Callback API, otherwise, you should use the Blocking API.
+
+Callback API:
+
+struct EndPoint
+{
+    int type;
+   union {
+       struct sockaddr sock;
+      struct usbaddr usb;
+   } addr;
+}
+
+typedef void (*acceptCallback)(struct EndPoint* endpoint);
+void registerAcceptor(const char* serviceName, acceptCallback* callback);
+
+void registerDataReceiver(...);
+
+===============================================================================
+Why ManCom?
+===============================================================================
+* Transport Encapsulation
+
+* Shared Code
+  The code to accept tcp/mipio/usb connections is quite different.  If you
+  wanted your application to support one or more of these, it would require
+  a fair amount of code.  With this library, you can change which transport
+  your application uses with a runtime switch, and no code changes.
+
+* System-Wide Configuration
+  Every application that uses ManCom can be configured outside of the application
+  in a central location.
+
+* System-Wide Monitoring
+  We could implement a service to monitor performance and the status of the all
+  communication channels in our system using this library.
+
+
+===============================================================================
+Note
+===============================================================================
+We may need a function to allow an application to wait for ManCom to be ready.
+
+
+
+===============================================================================
+Architecture
+===============================================================================
+
+Kernel Mode vs UserMode?
+---------------------------------------
+This option should probably be determined at compile time and only one version
+should be supported at runtime.  Kernel mode will be more performant but  bugs
+will be more catastrophic.
+
+One instace per process, or One instance per system?
+---------------------------------------
+One decision to think about is whether the library should have the ability to
+share data accross processes and/or share data within a single process. Both
+options could be supported at runtime or you could exclusively use one or the other.
+If the library only operates within a single process, it will make cleanup
+simpler, however, it will not be able to optimize thread usage as well.  The
+other thing to think about is memory mapping.  If we use a technique that
+allows the library to operate on shared resources between multiple processes,
+there may be some hurdles to cross with memory mapping between the processes.
+
+
+registerAcceptor
+
+The registerAcceptor function will need to know:
+  1. Should this acceptor be a part of this process only, or should
+     it be a part of a system-wide shared process?
+
+
+Questions
+
+1. Let's look at a simple echo server.
+What if you want to pass a callback function to the driver for certain tcp
+ports, but then your process exits?  Maybe the driver should have an option to
+keep callbacks after a process dies?  But then how do you call that process's
+callback functions?  Something to think about.
+
+Multiplexing API?
+
+Some type of epoll interface.
